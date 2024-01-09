@@ -1,50 +1,44 @@
-import pandas as pd
 import streamlit as st
-import seaborn as sns
-import matplotlib.pyplot as plt
+import plotly.express as px
+import pandas as pd
+import numpy as np
 
-# Charger le dataset des voitures
+# Charger vos données
 url = "https://raw.githubusercontent.com/murpi/wilddata/master/quests/cars.csv"
-df = pd.read_csv(url)
+df_cars = pd.read_csv(url)
 
-# Ajouter une colonne pour la région en fonction de la colonne "origine"
-df['Region'] = df['origin'].map({1: 'US', 2: 'Europe', 3: 'Japan'})
+df_cars = df_cars.sort_values(by='year') 
 
-# Interface Streamlit
-st.title("Analyse des voitures")
+# HEATMAP
+selected_columns = ["mpg", "cylinders", "cubicinches", "hp", "weightlbs", "time-to-60", "year"]
+subset_df = df_cars[selected_columns]
 
-# Filtrer par région
-region_filter = st.sidebar.selectbox("Filtrer par région", ['Toutes', 'US', 'Europe', 'Japan'])
+# Calcul matrice de corrélation
+correlation_matrix = subset_df.corr()
 
-if region_filter != 'Toutes':
-    df_filtered = df[df['Region'] == region_filter]
-else:
-    df_filtered = df
+# Streamlit app
+st.title('Analyse des voitures')
+
+# Filtrer par continent
+st.sidebar.subheader('Filtrer par continent')
+continent_filter = st.sidebar.selectbox('Choisir un continent', df_cars['continent'].unique())
+
+# Filtrer les résultats par continent
+filtered_df = df_cars[df_cars['continent'] == continent_filter]
 
 # Afficher les données filtrées
-st.write("Affichage des données pour la région :", region_filter)
-st.write(df_filtered.head())
+st.subheader(f'Données pour le continent {continent_filter}')
+st.write(filtered_df)
 
-# Analyse de corrélation
-st.header("Analyse de corrélation")
+# Créer une disposition en ligne
+st.subheader('Heatmap Matrice de Corrélation')
+st.plotly_chart(px.imshow(correlation_matrix,
+                           labels=dict(color='Correlation'),
+                           x=selected_columns,
+                           y=selected_columns,
+                           title='Heatmap matrice corrélation'))
 
-# Matrice de corrélation
-corr_matrix = df_filtered.corr()
-st.write("Matrice de corrélation :")
-st.write(corr_matrix)
-
-# Heatmap de corrélation
-st.write("Heatmap de corrélation :")
-sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt='.2f')
-st.pyplot()
-
-# Distribution des caractéristiques
-st.header("Distribution des caractéristiques")
-
-# Sélectionner une caractéristique à afficher
-feature_to_plot = st.sidebar.selectbox("Sélectionnez une caractéristique", df.columns)
-
-# Distribution de la caractéristique sélectionnée
-st.write(f"Distribution de {feature_to_plot} par région :")
-sns.histplot(data=df_filtered, x=feature_to_plot, hue='Region', kde=True)
-st.pyplot()
+# ANIMATION
+st.subheader('Animation Bar Chart')
+st.plotly_chart(px.bar(df_cars, x="hp", y="cylinders", animation_frame="year",
+                       range_x=[50, 180], range_y=[0, 20]))
